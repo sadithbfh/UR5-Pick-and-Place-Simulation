@@ -246,34 +246,6 @@ def setUpArea(livello=None, selectBrick=None):
 			#spawn random brick
 			spawnaLego(selectBrick)
 			#spawnaLego('X2-Y2-Z2',rotated=True)
-		elif(livello == 2):
-			#spawn all bricks
-			for brickType in brickList:
-				spawnaLego(brickType)
-		elif(livello == 3):
-			#spawn first 4 blocks	
-			for brickType in brickList[0:4]:
-				spawnaLego(brickType)
-			#spawn three blocks rotated
-			spawnaLego('X1-Y2-Z2',rotated=True)
-			spawnaLego('X1-Y2-Z2',rotated=True)
-			spawnaLego('X2-Y2-Z2',rotated=True)
-		elif(livello == 4):
-			if selectBrick is None:
-				#spawn blocks build
-				spawn_dim = (0.10, 0.10)    			#spawning area
-				spawnaLego('X1-Y2-Z2',rotated=True)
-				spawnaLego('X1-Y2-Z2',rotated=True)
-				spawnaLego('X1-Y3-Z2')	
-				spawnaLego('X1-Y3-Z2')
-				spawnaLego('X1-Y1-Z2')	
-				spawnaLego('X1-Y2-Z2-TWINFILLET')
-			else:
-				models = getLego4Costruzione()
-				r = 3
-				for brickType in models.name:
-					r -= 1
-					spawnaLego(brickType, rotated=r>0)
 		else:
 			print("[Error]: select level from 1 to 4")
 			return

@@ -40,8 +40,8 @@
     <model name="modern_table">
       <static>true</static>
       <include>
-        <uri>model://modern_table</uri>
-         <pose>0 -0.558 0 0 0 -3.1415926535</pose>
+        <uri>model://BasketTable</uri>
+         <pose>0 -0.9 0 0 0 -3.1415926535</pose>
       </include>
     </model>
 
@@ -68,7 +68,7 @@
       <static>true</static>
       <include>
         <uri>model://kinect</uri>
-        <pose>-0.44 -0.50 1.58 1.58 1.57079 0</pose>
+        <pose>-0.2 -1.0 1.58 1.58 1.57079 0</pose>  <!-- @sadith moving camera a little bit -->
       </include>
     </model>
 

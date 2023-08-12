@@ -45,8 +45,8 @@ spawn_name = '_spawn'
 level = None
 selectBrick = None
 maxLego = 11
-spawn_pos = (-0.35, -0.42, 0.74)  		#center of spawn area
-spawn_dim = (0.32, 0.23)    			#spawning area
+spawn_pos = (-0.1, -0.9, 0.70)  		#center of spawn area @sadith 
+spawn_dim = (0.032, 0.023)    			#spawning area
 min_space = 0.010    					#min space between lego
 min_distance = 0.15   					#min distance between lego
 
@@ -201,7 +201,7 @@ if __name__ == '__main__':
 			rospy.wait_for_service('/gazebo/spawn_sdf_model')
 		
 		#starting position bricks
-		#setUpArea(level=1, selectBrick=selectBrick)
+		setUpArea(level=1, selectBrick=selectBrick)
 		print("All done. Ready to start.")
 	except rosservice.ROSServiceIOException as err:
 		print("No ROS master execution")

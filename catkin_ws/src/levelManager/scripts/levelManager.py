@@ -52,11 +52,11 @@ min_distance = 0.15   					#min distance between lego
 
 
 brickDict = { \
-		'X1-Y1-Z2': (0,(0.031,0.031,0.08))
+		'Bolzen': (0,(0.031,0.031,0.08))
 		}
 
 brickOrientations = { \
-		'X1-Y1-Z2': (((1,1),(1,3)),-1.715224,0.031098)
+		'Bolzen': (((1,1),(1,3)),-1.715224,0.031098)
 		} #brickOrientations = (((side, roll), ...), rotX, height)
 
 #color bricks

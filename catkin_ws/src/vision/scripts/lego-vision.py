@@ -29,7 +29,7 @@ origin = None
 model = None
 model_orientation = None
 
-legoClasses = ['X1-Y1-Z2']
+legoClasses = ['Bolzen']
 
 argv = sys.argv
 a_show = '-show' in argv

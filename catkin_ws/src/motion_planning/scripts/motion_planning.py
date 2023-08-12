@@ -17,7 +17,7 @@ from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
 MODELS_INFO = {
-    "X1-Y1-Z2": {
+    "Bolzen": {
         "home": [0.088808, -0.295820, 0.777] 
     }
 }
@@ -27,7 +27,7 @@ for model, model_info in MODELS_INFO.items():
     #MODELS_INFO[model]["home"] = model_info["home"] + np.array([0.0, 0.10, 0.0])
 
 for model, info in MODELS_INFO.items():
-    model_json_path = os.path.join(PKG_PATH, "..", "models", f"lego_{model}", "model.json")
+    model_json_path = os.path.join(PKG_PATH, "..", "models", f"{model}", "model.json")
     # make path absolute
     model_json_path = os.path.abspath(model_json_path)
     # check path exists

@@ -2,7 +2,7 @@
 <launch>
   <!-- Export env variable so that gazebo finds our models -->
   <env name="GAZEBO_MODEL_PATH"
-       value="$(optenv GAZEBO_MODEL_PATH):$(find levelManager)/models:$(find levelManager)/lego_models" />
+       value="$(optenv GAZEBO_MODEL_PATH):$(find levelManager)/models:$(find levelManager)/other_models" />
   
   <!-- Launch file parameters -->
   <arg name="paused"     default="true"/>

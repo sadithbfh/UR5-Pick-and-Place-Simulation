@@ -70,7 +70,7 @@ lego = [] 	#lego = [[name, type, pose, radius], ...]
 #get model path
 def getModelPath(model):
 	pkgPath = rospkg.RosPack().get_path(package_name)
-	return f'{pkgPath}/lego_models/{model}/model.sdf'
+	return f'{pkgPath}/other_models/{model}/model.sdf'
 
 #set position brick
 def randomPose(brickType, rotated):

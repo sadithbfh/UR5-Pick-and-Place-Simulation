@@ -14,10 +14,6 @@ import xml.etree.ElementTree as ET
 
 path = rospkg.RosPack().get_path("levelManager")
 
-costruzioni = ['costruzione-1', 'costruzione-2']
-
-def randomCostruzione():
-	return random.choice(costruzioni)
 
 def getPose(modelEl):
 	strpose = modelEl.find('pose').text
@@ -37,34 +33,6 @@ def get_Parent_Child(jointEl):
 	return parent, child
 
 
-def getLego4Costruzione(select=None):
-	nome_cost = randomCostruzione()
-	if select is not None: nome_cost = costruzioni[select]
-	print("spawning", nome_cost)
-
-	tree = ET.parse(f'{path}/lego_models/{nome_cost}/model.sdf')
-	root = tree.getroot()
-	costruzioneEl = root.find('model')
-
-	brickEls = []
-	for modEl in costruzioneEl:
-		if modEl.tag in ['model', 'include']:
-			brickEls.append(modEl)
-
-	models = ModelStates()
-	for bEl in brickEls:
-		pose = getPose(bEl)
-		models.name.append(get_Name_Type(bEl)[1])
-		rot = Quaternion(*quaternion_from_euler(*pose[3:]))
-		models.pose.append(Pose(Point(*pose[:3]), rot))
-
-	rospy.init_node("levelManager")
-	istruzioni = rospy.Publisher("costruzioneIstruzioni", ModelStates, queue_size=1)
-	istruzioni.publish(models)
-
-	return models
-
-
 def changeModelColor(model_xml, color):
 	root = ET.XML(model_xml)
 	root.find('.//material/script/name').text = color
@@ -82,35 +50,6 @@ spawn_dim = (0.32, 0.23)    			#spawning area
 min_space = 0.010    					#min space between lego
 min_distance = 0.15   					#min distance between lego
 
-#function parsing arguments
-def readArgs():
-	global package_name
-	global level
-	global selectBrick
-	try:
-		argn = 1
-		while argn < len(sys.argv):
-			arg = sys.argv[argn]
-			
-			if arg.startswith('__'):
-				None
-			elif arg[0] == '-':
-				if arg in ['-l', '-level']:
-					argn += 1
-					level = int(sys.argv[argn])
-				elif arg in ['-b', '-brick']:
-					argn += 1
-					selectBrick = brickList[int(sys.argv[argn])]
-				else:
-					raise Exception()
-			else: raise Exception()
-			argn += 1
-	except Exception as err:
-		print("Usage: .\levelManager.py" \
-					+ "\n\t -l | -level: assigment from 1 to 4" \
-					+ "\n\t -b | -brick: spawn specific grip from 0 to 10")
-		exit()
-		pass
 
 brickDict = { \
 		'X1-Y1-Z2': (0,(0.031,0.031,0.08))
@@ -121,9 +60,7 @@ brickOrientations = { \
 		} #brickOrientations = (((side, roll), ...), rotX, height)
 
 #color bricks
-colorList = ['Gazebo/Indigo', 'Gazebo/Gray', 'Gazebo/Orange', \
-		'Gazebo/Red', 'Gazebo/Purple', 'Gazebo/SkyBlue', \
-		'Gazebo/DarkYellow', 'Gazebo/White', 'Gazebo/Green']
+colorList = ['Gazebo/SkyBlue']
 
 brickList = list(brickDict.keys())
 counters = [0 for brick in brickList]
@@ -231,7 +168,7 @@ def spawnaLego(brickType=None, rotated=False):
 	counters[brickIndex] += 1
 
 #main function setup area and level manager
-def setUpArea(livello=None, selectBrick=None): 	
+def setUpArea(level=1, selectBrick=None): 	
 
 	#delete all bricks on the table
 	for brickType in brickList:	#ripulisce
@@ -242,7 +179,7 @@ def setUpArea(livello=None, selectBrick=None):
 	spawn_model(spawn_name, Pose(Point(*spawn_pos),None) )
 	
 	try:
-		if(livello == 1):
+		if(level == 1):
 			#spawn random brick
 			spawnaLego(selectBrick)
 			#spawnaLego('X2-Y2-Z2',rotated=True)
@@ -257,7 +194,6 @@ def setUpArea(livello=None, selectBrick=None):
 
 if __name__ == '__main__':
 
-	readArgs()
 
 	try:
 		if '/gazebo/spawn_sdf_model' not in rosservice.get_service_list():
@@ -265,7 +201,7 @@ if __name__ == '__main__':
 			rospy.wait_for_service('/gazebo/spawn_sdf_model')
 		
 		#starting position bricks
-		setUpArea(level, selectBrick)
+		setUpArea(level=1, selectBrick=selectBrick)
 		print("All done. Ready to start.")
 	except rosservice.ROSServiceIOException as err:
 		print("No ROS master execution")

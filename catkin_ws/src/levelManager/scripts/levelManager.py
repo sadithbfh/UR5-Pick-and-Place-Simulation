@@ -201,7 +201,7 @@ if __name__ == '__main__':
 			rospy.wait_for_service('/gazebo/spawn_sdf_model')
 		
 		#starting position bricks
-		setUpArea(level=1, selectBrick=selectBrick)
+		#setUpArea(level=1, selectBrick=selectBrick)
 		print("All done. Ready to start.")
 	except rosservice.ROSServiceIOException as err:
 		print("No ROS master execution")

@@ -7,6 +7,7 @@ import message_filters
 import rospy
 import sys
 import time
+import cv2 
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -17,7 +18,7 @@ from geometry_msgs.msg import *
 from pyquaternion import Quaternion as PyQuaternion
 
 # Global variables
-path_yolo = path.join(path.expanduser('~'), 'yolov5')
+path_yolo = path.join(path.expanduser('/home/acroba/UR5-Pick-and-Place-Simulation/'), 'yolov5')
 path_vision = RosPack().get_path('vision')
 path_weigths = path.join(path_vision, 'weigths')
 
@@ -384,7 +385,7 @@ def process_image(rgb, depth):
     
     img_draw = rgb.copy()
     hsv = cv.cvtColor(rgb, cv.COLOR_BGR2HSV)
-
+    cv2.imwrite("yolo.png", rgb)
     get_dist_tavolo(depth, hsv, img_draw)
     get_origin(rgb)
 
@@ -395,17 +396,22 @@ def process_image(rgb, depth):
     results = model(rgb)
     pandino = results.pandas().xyxy[0].to_dict(orient="records")
     #print("Model localization: Finish  ")
-        
+    print(f"Yolov output, {pandino}")
     # ----
     if depth is not None:
         imgs = (rgb, hsv, depth, img_draw)
         results = [process_item(imgs, item) for item in pandino]
     
     # ----
-
+    print(f"results", results)
     msg = ModelStates()
-    for point in results:
+    for idx,point in enumerate(results):
         if point is not None:
+            print(f"idx {idx}")
+            print(f"name {point.name} ")
+            print(f"pose {point.pose}")
+            print(100*"-")
+            print(100*"-")
             msg.name.append(point.name)
             msg.pose.append(point.pose)
     pub.publish(msg)

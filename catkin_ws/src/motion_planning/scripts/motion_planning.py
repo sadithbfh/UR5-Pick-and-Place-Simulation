@@ -17,38 +17,8 @@ from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
 MODELS_INFO = {
-    "X1-Y2-Z1": {
-        "home": [0.264589, -0.293903, 0.777] 
-    },
-    "X2-Y2-Z2": {
-        "home": [0.277866, -0.724482, 0.777] 
-    },
-    "X1-Y3-Z2": {
-        "home": [0.268053, -0.513924, 0.777]  
-    },
-    "X1-Y2-Z2": {
-        "home": [0.429198, -0.293903, 0.777] 
-    },
-    "X1-Y2-Z2-CHAMFER": {
-        "home": [0.592619, -0.293903, 0.777]  
-    },
-    "X1-Y4-Z2": {
-        "home": [0.108812, -0.716057, 0.777] 
-    },
     "X1-Y1-Z2": {
         "home": [0.088808, -0.295820, 0.777] 
-    },
-    "X1-Y2-Z2-TWINFILLET": {
-        "home": [0.103547, -0.501132, 0.777] 
-    },
-    "X1-Y3-Z2-FILLET": {
-        "home": [0.433739, -0.507130, 0.777]  
-    },
-    "X1-Y4-Z1": {
-        "home": [0.589908, -0.501033, 0.777]  
-    },
-    "X2-Y2-Z2-FILLET": {
-        "home": [0.442505, -0.727271, 0.777] 
     }
 }
 

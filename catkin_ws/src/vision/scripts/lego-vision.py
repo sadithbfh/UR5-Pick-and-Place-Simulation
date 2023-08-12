@@ -29,7 +29,7 @@ origin = None
 model = None
 model_orientation = None
 
-legoClasses = ['X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 'X1-Y3-Z2-FILLET', 'X1-Y4-Z1', 'X1-Y4-Z2', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET']
+legoClasses = ['X1-Y1-Z2']
 
 argv = sys.argv
 a_show = '-show' in argv
@@ -180,7 +180,7 @@ def process_item(imgs, item):
             cl = 2                      # -> X1
             ax = 0
         else: print("[Warning] Error in classification")
-    nm = legoClasses[cl]
+    nm = legoClasses[0] #@sadith using only first index 
 
     if n != 1:
         print("[Warning] Classification not found")

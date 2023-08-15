@@ -8,20 +8,25 @@ import rospy
 import sys
 import time
 import cv2 
-
-from sensor_msgs.msg import Image
+import scipy.ndimage as ndimage
+from skimage.feature import peak_local_max
+import os 
+from sensor_msgs.msg import Image, CameraInfo
+from std_msgs.msg import Float32MultiArray
 from cv_bridge import CvBridge
 from rospkg import RosPack # get abs path
 from os import path # get home path
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import *
 from pyquaternion import Quaternion as PyQuaternion
+from models.ggcnn import GGCNN
+
 
 # Global variables
-path_yolo = path.join(path.expanduser('/home/acroba/UR5-Pick-and-Place-Simulation/'), 'yolov5')
+path_yolo = path.join(path.expanduser('/home/acroba/UR5-Pick-and-Place-Simulation/catkin_ws/src/vision/'), 'scripts')
 path_vision = RosPack().get_path('vision')
 path_weigths = path.join(path_vision, 'weigths')
-
+bridge = CvBridge()
 cam_point = (-0.44, -0.5, 1.58)
 height_tavolo = 0.74
 dist_tavolo = None
@@ -29,6 +34,10 @@ origin = None
 model = None
 model_orientation = None
 
+
+# Initialise some globals.
+prev_mp = np.array([150, 150])
+ROBOT_Z = 0
 legoClasses = ['X1-Y1-Z2', 'X1-Y2-Z1', 'X1-Y2-Z2', 'X1-Y2-Z2-CHAMFER', 'X1-Y2-Z2-TWINFILLET', 'X1-Y3-Z2', 'X1-Y3-Z2-FILLET', 'X1-Y4-Z1', 'X1-Y4-Z2', 'X2-Y2-Z2', 'X2-Y2-Z2-FILLET']
 
 argv = sys.argv
@@ -98,7 +107,7 @@ def myimshow(title, img):
 # ----------------- LOCALIZATION ----------------- #
 
 
-def process_item(imgs, item):
+def process_item2(imgs, item):
 
     #images
     rgb, hsv, depth, img_draw = imgs
@@ -379,9 +388,12 @@ def process_item(imgs, item):
     #print(msg)
     return msg
 
+def robot_pos_callback(data):
+    global ROBOT_Z
+    ROBOT_Z = data.pose.position.z
 
 #image processing
-def process_image(rgb, depth):    
+def process_image2(rgb, depth):    
     
     img_draw = rgb.copy()
     hsv = cv.cvtColor(rgb, cv.COLOR_BGR2HSV)
@@ -423,6 +435,108 @@ def process_image(rgb, depth):
 
     pass
 
+def process_image(rgb, depth): 
+    global prev_mp
+    global ROBOT_Z
+    global fx, cx, fy, cy
+    # Get the camera parameters
+    camera_info_msg = rospy.wait_for_message('/camera/depth/camera_info', CameraInfo)
+    K = camera_info_msg.K
+    fx = K[0]
+    cx = K[2]
+    fy = K[4]
+    cy = K[5]
+    # Crop a square out of the middle of the depth and resize it to 300*300
+    crop_size = 400
+    depth_crop = cv2.resize(depth[(480-crop_size)//2:(480-crop_size)//2+crop_size, (640-crop_size)//2:(640-crop_size)//2+crop_size], (300, 300))
+
+    # Replace nan with 0 for inpainting.
+    depth_crop = depth_crop.copy()
+    depth_nan = np.isnan(depth_crop).copy()
+    depth_crop[depth_nan] = 0
+    if(True): 
+        # open cv inpainting does weird things at the border.
+        depth_crop = cv2.copyMakeBorder(depth_crop, 1, 1, 1, 1, cv2.BORDER_DEFAULT)
+
+        mask = (depth_crop == 0).astype(np.uint8)
+        # Scale to keep as float, but has to be in bounds -1:1 to keep opencv happy.
+        depth_scale = np.abs(depth_crop).max()
+        depth_crop = depth_crop.astype(np.float32)/depth_scale  # Has to be float32, 64 not supported.
+
+        depth_crop = cv2.inpaint(depth_crop, mask, 1, cv2.INPAINT_NS)
+
+        # Back to original size and value range.
+        depth_crop = depth_crop[1:-1, 1:-1]
+        depth_crop = depth_crop * depth_scale        
+        # Figure out roughly the depth in mm of the part between the grippers for collision avoidance.
+        depth_center = depth_crop[100:141, 130:171].flatten()
+        depth_center.sort()
+        depth_center = depth_center[:10].mean() * 1000.0
+
+        # Run it through the network.
+        depth_crop = np.clip((depth_crop - depth_crop.mean()), -1, 1)
+        GGmodel = GGCNN()
+        GGmodel.load_state_dict(torch.load('src/vision/scripts/ggcnn_weights_cornell/ggcnn_epoch_23_cornell_statedict.pt'))
+        GGmodel.eval()
+        with torch.no_grad():
+            pos_output, cos_output, sin_output, width_output = GGmodel(torch.tensor(depth_crop.reshape((1, 1, 300, 300)),
+                                            dtype=torch.float32))
+            
+
+        points_out = pos_output.squeeze()
+        points_out[depth_nan] = 0
+
+        # Calculate the angle map.
+        cos_out = cos_output.squeeze()
+        sin_out = sin_output.squeeze()
+        ang_out = np.arctan2(sin_out, cos_out)/2.0
+
+        width_out = width_output.squeeze() * 150.0  # Scaled 0-150:0-1
+        # Filter the outputs.
+        points_out = ndimage.filters.gaussian_filter(points_out, 5.0)  # 3.0
+        ang_out = ndimage.filters.gaussian_filter(ang_out, 2.0)
+        # Calculate the best pose from the camera intrinsics.
+        maxes = None
+
+        ALWAYS_MAX = False  # Use ALWAYS_MAX = True for the open-loop solution.
+
+        if ROBOT_Z > 0.34 or ALWAYS_MAX:  # > 0.34 initialises the max tracking when the robot is reset.
+            # Track the global max.
+            max_pixel = np.array(np.unravel_index(np.argmax(points_out), points_out.shape))
+            prev_mp = max_pixel.astype(np.int)
+        else:
+            # Calculate a set of local maxes.  Choose the one that is closes to the previous one.
+            maxes = peak_local_max(points_out, min_distance=10, threshold_abs=0.1, num_peaks=3)
+            if maxes.shape[0] == 0:
+                return
+            max_pixel = maxes[np.argmin(np.linalg.norm(maxes - prev_mp, axis=1))]
+
+            # Keep a global copy for next iteration.
+            prev_mp = (max_pixel * 0.25 + prev_mp * 0.75).astype(np.int)
+
+        ang = ang_out[max_pixel[0], max_pixel[1]]
+        width = width_out[max_pixel[0], max_pixel[1]]
+
+        # Convert max_pixel back to uncropped/resized image coordinates in order to do the camera transform.
+        max_pixel = ((np.array(max_pixel) / 300.0 * crop_size) + np.array([(480 - crop_size)//2, (640 - crop_size) // 2]))
+        max_pixel = np.round(max_pixel).astype(np.int)
+
+        point_depth = depth[max_pixel[0], max_pixel[1]]
+
+        # These magic numbers are my camera intrinsic parameters.
+        x = (max_pixel[1] - cx)/(fx) * point_depth
+        y = (max_pixel[0] - cy)/(fy) * point_depth
+        z = point_depth
+
+        if np.isnan(z):
+            return
+        # Draw grasp markers on the points_out and publish it. (for visualisation)
+
+        # Output the best grasp pose relative to camera.
+        cmd_msg = Float32MultiArray()
+        cmd_msg.data = [x, y, z, ang, width, depth_center]
+        pub.publish(cmd_msg)
+
 def process_CB(image_rgb, image_depth):
     t_start = time.time()
     #from standard message image to opencv image
@@ -449,7 +563,7 @@ def start_node():
     depth = message_filters.Subscriber("/camera/depth/image_raw", Image)
     
     #publisher results
-    pub=rospy.Publisher("lego_detections", ModelStates, queue_size=1)
+    pub=rospy.Publisher("/lego_detections", Float32MultiArray, queue_size=1)
 
     print("Localization is starting.. ")
     print("(Waiting for images..)", end='\r'), print(end='\033[K')
@@ -478,7 +592,7 @@ def load_models():
 
 if __name__ == '__main__':
 
-    load_models()
+   # load_models()
     try:
         start_node()
     except rospy.ROSInterruptException:

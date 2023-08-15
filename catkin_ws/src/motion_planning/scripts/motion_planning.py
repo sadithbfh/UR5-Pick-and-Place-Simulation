@@ -8,11 +8,14 @@ import actionlib
 import control_msgs.msg
 from controller import ArmController
 from gazebo_msgs.msg import ModelStates
+from std_msgs.msg import Float32MultiArray
 import rospy
+from geometry_msgs.msg import *
 from pyquaternion import Quaternion as PyQuaternion
 import numpy as np
 from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
+import tf.transformations as tft
 
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -139,7 +142,7 @@ def straighten(model_pose, gazebo_model_name):
         z=model_pose.orientation.z,
         w=model_pose.orientation.w)
 
-    model_size = MODELS_INFO[get_model_name(gazebo_model_name)]["size"]
+    model_size = [0.5,0.5,0.5]
 
     """
         Calculate approach quaternion and target quaternion
@@ -364,48 +367,37 @@ if __name__ == "__main__":
 
     print("Waiting for detection of the models")
     rospy.sleep(0.5)
-    legos = get_legos_pos(vision=True)
-    legos.sort(reverse=True, key=lambda a: (a[1].position.x, a[1].position.y))
+    msg = rospy.wait_for_message("/lego_detections", Float32MultiArray, timeout=None)
+    print("Inside motion planning")
+    d = list(msg.data)
+    print("Data from message is", d)
+    x, y, z = [0.264589, -0.293903, 0.777]
+    grip_width = d[4]
+    CURR_Z = 0  # Current end-effector z height.
+    # Convert width in pixels to mm.
+    # 0.07 is distance from end effector (CURR_Z) to camera.
+    # 0.1 is approx degrees per pixel for the realsense.
+    g_width = 2 * ((CURR_Z + 0.07)) * np.tan(0.1 * grip_width / 2.0 / 180.0 * np.pi) * 1000
+    # Convert into motor positions.
+    g = min((1 - (min(g_width, 70)/70)) * (6800-4000) + 4000, 5500)
+    set_gripper(value=g)
 
-    for model_name, model_pose in legos:
-        open_gripper()
-        try:
-            model_home = MODELS_INFO[model_name]["home"]
-            model_size = MODELS_INFO[model_name]["size"]
-        except ValueError as e:
-            print(f"Model name {model_name} was not recognized!")
-            continue
+    # Pose of the grasp (position only) in the camera frame.
+    gp = geometry_msgs.msg.Pose()
+    gp.position.x = d[0]
+    gp.position.y = d[1]
+    gp.position.z = d[2]
+    gp.orientation.w = 1
 
-        # Get actual model_name at model xyz coordinates
-        try:
-            gazebo_model_name = get_gazebo_model_name(model_name, model_pose)
-        except ValueError as e:
-            print(e)
-            continue
+    q = tft.quaternion_from_euler(np.pi, 0, d[3])
+    gp.orientation.x = q[0]
+    gp.orientation.y = q[1]
+    gp.orientation.z = q[2]
+    gp.orientation.w = q[3]
 
-        # Straighten lego
-        straighten(model_pose, gazebo_model_name)
-        controller.move(dz=0.15)
-
-        """
-            Go to destination
-        """
-        x, y, z = model_home
-        z += model_size[2] / 2 +0.004
-        print(f"Moving model {model_name} to {x} {y} {z}")
-
-        controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
-        # Lower the object and release
-        controller.move_to(x, y, z)
-        set_model_fixed(gazebo_model_name)
-        open_gripper(gazebo_model_name)
-        controller.move(dz=0.15)
-
-        if controller.gripper_pose[0][1] > -0.3 and controller.gripper_pose[0][0] > 0:
-            controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
-
-        # increment z in order to stack lego correctly
-        MODELS_INFO[model_name]["home"][2] += model_size[2] - INTERLOCKING_OFFSET
+    print("GP", gp)
+    controller.move_to(d[0], d[1], 0.1) 
+    controller.move(dz=0.15)
     print("Moving to Default Position")
     controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
     open_gripper()

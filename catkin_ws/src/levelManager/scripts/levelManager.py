@@ -78,6 +78,7 @@ level = None
 selectBrick = None
 maxLego = 11
 spawn_pos = (-0.35, -0.42, 0.74)  		#center of spawn area
+
 spawn_dim = (0.32, 0.23)    			#spawning area
 min_space = 0.010    					#min space between lego
 min_distance = 0.15   					#min distance between lego
@@ -183,7 +184,8 @@ def randomPose(brickType, rotated):
 			pointZ = orients[2]
 			
 	rot = Quaternion(*quaternion_from_euler(rotX, rotY, rotZ))
-	point = Point(pointX, pointY, pointZ)
+	point = Point(-0.0, -0.0, pointZ) # @sadith 
+	#point = Point(pointX, pointY, pointZ)
 	return Pose(point, rot), dim1, dim2
 
 class PoseError(Exception):
@@ -218,7 +220,11 @@ def spawn_model(model, pos, name=None, ref_frame='world', color=None):
 	model_xml = open(getModelPath(model), 'r').read()
 	if color is not None:
 		model_xml = changeModelColor(model_xml, color)
-
+	pos.orientation.x = 0 
+	pos.orientation.y = 0 
+	pos.orientation.z = 0 
+	pos.orientation.w = 0 
+	print("Spawning at ", pos)
 	spawn_model_client = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
 	return spawn_model_client(model_name=name, 
 	    model_xml=model_xml,

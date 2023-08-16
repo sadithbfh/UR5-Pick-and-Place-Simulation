@@ -2,7 +2,7 @@
 <sdf version="1.7">
   <model name="robot_base">
     <static>true</static>
-    <link name="link">
+    <link name="base-link">
       <pose>0 0 0.73 0 0 0</pose>
 
       <collision name="surface">

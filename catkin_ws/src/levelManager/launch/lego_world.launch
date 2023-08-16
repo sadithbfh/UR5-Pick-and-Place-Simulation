@@ -46,6 +46,8 @@
 
   <include file="$(find ur5_gazebo)/launch/ur5_controllers.launch" />
 
+  <!-- Transform from camera to baselink, check mdel.dfs file of kinetic @sadith -->
+  <node name="kinect_to_base_broadcaster" pkg="tf" type="static_transform_publisher" args="-0.44 -0.50 1.58 1.58 1.57079 0 base_link camera_link 100" />
 
   <!-- Start Level Manager -->
   <node pkg="levelManager" name="levelManager" type="levelManager.py" output="screen" />

@@ -439,6 +439,8 @@ def process_image(rgb, depth):
     global prev_mp
     global ROBOT_Z
     global fx, cx, fy, cy
+    print("original image shape,", rgb.shape)
+    cv2.imwrite("yolo.png", rgb)
     # Get the camera parameters
     camera_info_msg = rospy.wait_for_message('/camera/depth/camera_info', CameraInfo)
     K = camera_info_msg.K
@@ -472,7 +474,8 @@ def process_image(rgb, depth):
         depth_center = depth_crop[100:141, 130:171].flatten()
         depth_center.sort()
         depth_center = depth_center[:10].mean() * 1000.0
-
+        print(depth_crop.shape)
+        cv2.imwrite("depth_crop.png", depth_crop*255)
         # Run it through the network.
         depth_crop = np.clip((depth_crop - depth_crop.mean()), -1, 1)
         GGmodel = GGCNN()
@@ -516,18 +519,18 @@ def process_image(rgb, depth):
 
         ang = ang_out[max_pixel[0], max_pixel[1]]
         width = width_out[max_pixel[0], max_pixel[1]]
-
+        print("Max pixel", max_pixel.shape)
         # Convert max_pixel back to uncropped/resized image coordinates in order to do the camera transform.
         max_pixel = ((np.array(max_pixel) / 300.0 * crop_size) + np.array([(480 - crop_size)//2, (640 - crop_size) // 2]))
         max_pixel = np.round(max_pixel).astype(np.int)
-
+        print(max_pixel.shape)
         point_depth = depth[max_pixel[0], max_pixel[1]]
-
+        print(max_pixel,cx,cy,fx,fy,point_depth)
         # These magic numbers are my camera intrinsic parameters.
-        x = (max_pixel[1] - cx)/(fx) * point_depth
-        y = (max_pixel[0] - cy)/(fy) * point_depth
+        x = (max_pixel[1] -cx)/(fx) * point_depth
+        y = (max_pixel[0] -cy)/(fy) * point_depth
         z = point_depth
-
+        print("Final", x, y, z, ang, width, depth_center)
         if np.isnan(z):
             return
         # Draw grasp markers on the points_out and publish it. (for visualisation)

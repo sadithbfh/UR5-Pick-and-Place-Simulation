@@ -16,6 +16,10 @@ import numpy as np
 from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 import tf.transformations as tft
+import tf.transformations as tf_trans
+
+from helpers.transforms import current_robot_pose, publish_tf_quaterion_as_transform, convert_pose, publish_pose_as_transform
+
 
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -384,19 +388,58 @@ if __name__ == "__main__":
 
     # Pose of the grasp (position only) in the camera frame.
     gp = geometry_msgs.msg.Pose()
-    gp.position.x = d[0]
-    gp.position.y = d[1]
-    gp.position.z = d[2]
+    gp.position.x = 0.0
+    gp.position.y = 0.0
+    gp.position.z = 0.0
     gp.orientation.w = 1
 
-    q = tft.quaternion_from_euler(np.pi, 0, d[3])
-    gp.orientation.x = q[0]
-    gp.orientation.y = q[1]
-    gp.orientation.z = q[2]
-    gp.orientation.w = q[3]
+    # Camera pose in robot frame, get these values from the tf transformation defined in lauch file 
+    translation_camera_to_robot = [-0.44, -0.5, 1.58]
+    rotation_camera_to_robot = [-0.5022940270013622, 0.49769222119830875, 0.5022972049227021, 0.4976953700048749]
 
-    print("GP", gp)
-    controller.move_to(d[0], d[1], 0.1) 
+    # Convert to transformation matrices
+    transformation_camera_to_robot = tf_trans.concatenate_matrices(
+        tf_trans.translation_matrix(translation_camera_to_robot),
+        tf_trans.quaternion_matrix(rotation_camera_to_robot))
+
+    object_pose_camera_matrix = tf_trans.concatenate_matrices(
+        tf_trans.translation_matrix([gp.position.x,gp.position.y,gp.position.z]),
+        tf_trans.quaternion_matrix([gp.position.x,gp.position.y,gp.position.z]))
+
+    # Combine transformations
+    object_pose_robot_matrix = np.dot(transformation_camera_to_robot, object_pose_camera_matrix)
+
+    # Extract translation and rotation
+    translation_object_in_robot = tf_trans.translation_from_matrix(object_pose_robot_matrix)
+    rotation_object_in_robot = tf_trans.quaternion_from_matrix(object_pose_robot_matrix)
+    #gp_base = convert_pose(gp, 'camera_link', 'base_link')
+    #gp_base = convert_pose(gp, 'base_link','camera_link')
+    q = tft.quaternion_from_euler(np.pi, 0, d[3])
+    gp_base = geometry_msgs.msg.Pose()
+    gp_base.position.x = translation_object_in_robot[0]
+    gp_base.position.y = translation_object_in_robot[1]
+    gp_base.position.z = translation_object_in_robot[2]
+    gp_base.orientation.x = q[0]
+    gp_base.orientation.y = q[1]
+    gp_base.orientation.z = q[2]
+    gp_base.orientation.w = q[3]
+
+    publish_pose_as_transform(gp_base, 'base_link_base', 'G', 0.5)
+    print("GP", gp_base)
+    print("Q:", q)
+    print(100*"-")
+    print(100*"-")
+    controller.move_to(x=gp_base.position.x,
+                       y=gp_base.position.y, 
+                       target_quat=PyQuaternion(
+                                                x=gp_base.orientation.x,
+                                                y=gp_base.orientation.y,
+                                                z=gp_base.orientation.z,
+                                                w=gp_base.orientation.w)
+                        )
+    print("Default POS", DEFAULT_POS)
+    print("Default Quat", DEFAULT_QUAT)
+
     controller.move(dz=0.15)
     print("Moving to Default Position")
     controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)

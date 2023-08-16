@@ -388,11 +388,11 @@ if __name__ == "__main__":
 
     # Pose of the grasp (position only) in the camera frame.
     gp = geometry_msgs.msg.Pose()
-    gp.position.x = 0.0
-    gp.position.y = 0.0
-    gp.position.z = 0.0
+    gp.position.x = d[2]
+    gp.position.y = d[0]
+    gp.position.z = d[1]
     gp.orientation.w = 1
-
+    object_pose_camera = [gp.position.x, gp.position.y, gp.position.z, 0.0, 0.0, 0.0, 1]
     # Camera pose in robot frame, get these values from the tf transformation defined in lauch file 
     translation_camera_to_robot = [-0.44, -0.5, 1.58]
     rotation_camera_to_robot = [-0.5022940270013622, 0.49769222119830875, 0.5022972049227021, 0.4976953700048749]
@@ -403,8 +403,8 @@ if __name__ == "__main__":
         tf_trans.quaternion_matrix(rotation_camera_to_robot))
 
     object_pose_camera_matrix = tf_trans.concatenate_matrices(
-        tf_trans.translation_matrix([gp.position.x,gp.position.y,gp.position.z]),
-        tf_trans.quaternion_matrix([gp.position.x,gp.position.y,gp.position.z]))
+        tf_trans.translation_matrix(object_pose_camera[:3]),
+        tf_trans.quaternion_matrix(object_pose_camera[3:]))
 
     # Combine transformations
     object_pose_robot_matrix = np.dot(transformation_camera_to_robot, object_pose_camera_matrix)

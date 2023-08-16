@@ -184,8 +184,7 @@ def randomPose(brickType, rotated):
 			pointZ = orients[2]
 			
 	rot = Quaternion(*quaternion_from_euler(rotX, rotY, rotZ))
-	point = Point(-0.0, -0.0, pointZ) # @sadith 
-	#point = Point(pointX, pointY, pointZ)
+	point = Point(pointX, pointY, pointZ)
 	return Pose(point, rot), dim1, dim2
 
 class PoseError(Exception):
